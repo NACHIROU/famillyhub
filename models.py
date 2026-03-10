@@ -2,6 +2,7 @@ import mongoengine as me
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date
+from bson import ObjectId
 
 
 class Family(me.Document):
@@ -26,13 +27,19 @@ class User(UserMixin, me.Document):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    def get_id(self):
+        return str(self.id)
+
     @staticmethod
     def get_by_email(email):
         return User.objects(email=email).first()
 
     @staticmethod
     def get_by_id(user_id):
-        return User.objects(id=user_id).first()
+        try:
+            return User.objects(id=ObjectId(user_id)).first()
+        except:
+            return None
 
 
 class Meeting(me.Document):
