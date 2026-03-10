@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Meetings - FamilyHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Meetings</h1>
+    {% if current_user.is_admin %}
+    <a href="{{ url_for('meetings.create') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> New Meeting
+    </a>
+    {% endif %}
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+{% if meetings %}
+{% for meeting in meetings %}
+<div class="card">
+    <div class="card-header">
+        <div>
+            <h3 class="card-title">{{ meeting.title }}</h3>
+            <div class="card-meta">
+                <i class="fas fa-calendar-alt"></i> {{ meeting.date_time.strftime('%B %d, %Y at %I:%M %p') }}
+                {% if meeting.location %}
+                &nbsp;&nbsp;
+                <i class="fas fa-map-marker-alt"></i> {{ meeting.location }}
+                {% endif %}
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('meetings.view', meeting_id=meeting.id) }}" class="btn btn-sm btn-outline">View</a>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('meetings.edit', meeting_id=meeting.id) }}" class="btn btn-sm btn-outline">Edit</a>
+            <a href="{{ url_for('meetings.delete', meeting_id=meeting.id) }}" class="btn btn-sm btn-danger delete-btn">Delete</a>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if meeting.agenda %}
+    <div class="mt-3">
+        <strong>Agenda:</strong>
+        <p>{{ meeting.agenda }}</p>
+    </div>
+    {% endif %}
+    
+    <div class="mt-3">
+        <span class="badge badge-{% if meeting.date_time >= now %}success{% else %}info{% endif %}">
+            {% if meeting.date_time >= now %}Upcoming{% else %}Past{% endif %}
+        </span>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state">
+    <i class="fas fa-calendar-alt"></i>
+    <h3>No meetings yet</h3>
+    <p>Create your first family meeting.</p>
+    {% if current_user.is_admin %}
+    <a href="{{ url_for('meetings.create') }}" class="btn btn-primary mt-3">Create Meeting</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

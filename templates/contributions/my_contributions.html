@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}My Contributions - FamilyHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>My Contributions</h1>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+{% if my_status %}
+{% for item in my_status %}
+<div class="card">
+    <div class="card-header">
+        <div>
+            <h3 class="card-title">{{ item.contribution.title }}</h3>
+            <div class="card-meta">
+                Due: {{ item.contribution.due_date.strftime('%B %d, %Y') }} | 
+                Amount: {{ "%.0f"|format(item.contribution.amount) }} CFA
+            </div>
+        </div>
+        <span class="badge badge-{% if item.status == 'paid' %}success{% elif item.status == 'overdue' %}danger{% else %}warning{% endif %}">
+            {{ item.status|capitalize }}
+        </span>
+    </div>
+    
+    {% if item.payment %}
+    <p>Paid on: {{ item.payment.payment_date.strftime('%B %d, %Y') }}</p>
+    {% endif %}
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state">
+    <i class="fas fa-hand-holding-usd"></i>
+    <h3>No contributions</h3>
+    <p>There are no active contributions for your family.</p>
+</div>
+{% endif %}
+{% endblock %}

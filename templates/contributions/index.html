@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Contributions - FamilyHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Financial Contributions</h1>
+    {% if current_user.is_admin %}
+    <a href="{{ url_for('contributions.create') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> New Contribution
+    </a>
+    {% endif %}
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ "%.0f"|format(total_expected) }} CFA</div>
+        <div class="stat-label">Total Expected</div>
+    </div>
+    <div class="stat-card accent">
+        <div class="stat-value">{{ "%.0f"|format(total_collected) }} CFA</div>
+        <div class="stat-label">Total Collected</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ "%.0f"|format(total_pending) }} CFA</div>
+        <div class="stat-label">Total Pending</div>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+{% if contribution_status %}
+{% for item in contribution_status %}
+<div class="card">
+    <div class="card-header">
+        <div>
+            <h3 class="card-title">{{ item.contribution.title }}</h3>
+            <div class="card-meta">
+                Due: {{ item.contribution.due_date.strftime('%B %d, %Y') }} | 
+                Amount: {{ "%.0f"|format(item.contribution.amount) }} CFA |
+                Frequency: {{ item.contribution.frequency|capitalize }}
+            </div>
+        </div>
+        <span class="badge badge-{% if item.status == 'paid' %}success{% elif item.status == 'overdue' %}danger{% else %}warning{% endif %}">
+            {{ item.status|capitalize }}
+        </span>
+    </div>
+    
+    <div class="progress-bar mt-3">
+        <div class="progress-fill {% if item.status == 'paid' %}success{% elif item.status == 'overdue' %}danger{% else %}warning{% endif %}" 
+             style="width: {% if item.contribution.amount > 0 %}{{ (item.total_paid / item.contribution.amount|float) * 100 }}{% else %}0{% endif %}%">
+        </div>
+    </div>
+    <p class="card-meta mt-2">{{ "%.0f"|format(item.total_paid) }} CFA of {{ "%.0f"|format(item.contribution.amount) }} CFA collected</p>
+    
+    <div class="d-flex gap-2 mt-3">
+        <a href="{{ url_for('contributions.view', contribution_id=item.contribution.id) }}" class="btn btn-sm btn-outline">View Details</a>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('contributions.edit', contribution_id=item.contribution.id) }}" class="btn btn-sm btn-outline">Edit</a>
+        <a href="{{ url_for('contributions.delete', contribution_id=item.contribution.id) }}" class="btn btn-sm btn-danger delete-btn">Delete</a>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state">
+    <i class="fas fa-hand-holding-usd"></i>
+    <h3>No contributions yet</h3>
+    <p>Create your first family contribution.</p>
+    {% if current_user.is_admin %}
+    <a href="{{ url_for('contributions.create') }}" class="btn btn-primary mt-3">Create Contribution</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

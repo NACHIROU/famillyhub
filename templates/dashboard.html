@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - FamilyHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Welcome, {{ current_user.name }}!</h1>
+    {% if not current_user.family_id %}
+    <a href="{{ url_for('auth.create_family') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Create Family
+    </a>
+    {% endif %}
+</div>
+
+{% if not current_user.family_id %}
+<div class="no-family-prompt">
+    <h2>Welcome to FamilyHub!</h2>
+    <p>Get started by creating a family group or joining an existing one.</p>
+    <a href="{{ url_for('auth.create_family') }}" class="btn btn-primary">Create Your Family</a>
+</div>
+{% else %}
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ member_count }}</div>
+        <div class="stat-label">Family Members</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ meeting_count }}</div>
+        <div class="stat-label">Total Meetings</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ total_votes }}</div>
+        <div class="stat-label">Total Votes</div>
+    </div>
+    <div class="stat-card accent">
+        <div class="stat-value">{{ "%.0f"|format(total_collected) }} CFA</div>
+        <div class="stat-label">Total Collected</div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Upcoming Meetings</h3>
+            <a href="{{ url_for('meetings.index') }}" class="btn btn-sm btn-outline">View All</a>
+        </div>
+        
+        {% if upcoming_meetings %}
+        <ul class="list-group">
+            {% for meeting in upcoming_meetings %}
+            <li class="list-group-item">
+                <div>
+                    <strong>{{ meeting.title }}</strong>
+                    <div class="card-meta">
+                        {{ meeting.date_time.strftime('%B %d, %Y at %I:%M %p') }}
+                    </div>
+                </div>
+                <a href="{{ url_for('meetings.view', meeting_id=meeting.id) }}" class="btn btn-sm btn-outline">View</a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-calendar-alt"></i>
+            <p>No upcoming meetings</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Active Votes</h3>
+            <a href="{{ url_for('votes.index') }}" class="btn btn-sm btn-outline">View All</a>
+        </div>
+        
+        {% if active_votes %}
+        <ul class="list-group">
+            {% for vote in active_votes %}
+            <li class="list-group-item">
+                <div>
+                    <strong>{{ vote.title }}</strong>
+                    <div class="card-meta">
+                        {% if vote.deadline %}
+                        Deadline: {{ vote.deadline.strftime('%B %d, %Y') }}
+                        {% else %}
+                        No deadline
+                        {% endif %}
+                    </div>
+                </div>
+                <span class="badge badge-success">Active</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-vote-yea"></i>
+            <p>No active votes</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid-2 mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Recent Decisions</h3>
+            <a href="{{ url_for('decisions.index') }}" class="btn btn-sm btn-outline">View All</a>
+        </div>
+        
+        {% if recent_decisions %}
+        <ul class="list-group">
+            {% for decision in recent_decisions %}
+            <li class="list-group-item">
+                <div>
+                    <strong>{{ decision.title }}</strong>
+                    <div class="card-meta timestamp">{{ decision.created_at.strftime('%B %d, %Y') }}</div>
+                </div>
+                <span class="badge badge-{% if decision.status == 'approved' %}success{% elif decision.status == 'rejected' %}danger{% else %}warning{% endif %}">
+                    {{ decision.status|capitalize }}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-gavel"></i>
+            <p>No decisions yet</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Financial Summary</h3>
+            <a href="{{ url_for('contributions.index') }}" class="btn btn-sm btn-outline">View All</a>
+        </div>
+        
+        <div class="contribution-summary">
+            <div>
+                <div class="card-meta">Total Collected</div>
+                <div class="contribution-amount text-success">{{ "%.0f"|format(total_collected) }} CFA</div>
+            </div>
+            <div>
+                <div class="card-meta">Pending</div>
+                <div class="contribution-amount text-warning">{{ "%.0f"|format(pending) }} CFA</div>
+            </div>
+            <div>
+                <div class="card-meta">Overdue</div>
+                <div class="contribution-amount text-danger">{{ "%.0f"|format(overdue) }} CFA</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h3 class="card-title">Your Participation</h3>
+    </div>
+    
+    <div class="stats-grid" style="margin-bottom: 0;">
+        <div class="stat-card">
+            <div class="stat-value">{{ attendance_records }}</div>
+            <div class="stat-label">Meetings Attended</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ user_votes }}</div>
+            <div class="stat-label">Votes Cast</div>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

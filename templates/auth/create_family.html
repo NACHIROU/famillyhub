@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block auth_content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1>Create Your Family</h1>
+        <p class="subtitle">Start your family hub today.</p>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                <label for="family_name">Family Name</label>
+                {{ form.family_name(class="form-control", placeholder="e.g., The Smith Family") }}
+            </div>
+            
+            {{ form.submit(class="btn btn-primary btn-block") }}
+        </form>
+        
+        <p class="text-center mt-3">
+            Already have a family? <a href="{{ url_for('auth.join_family') }}" style="color: var(--primary);">Join existing family</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

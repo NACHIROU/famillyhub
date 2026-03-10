@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Votes - FamilyHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Votes</h1>
+    <a href="{{ url_for('votes.create') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> New Vote
+    </a>
+</div>
+
+<div class="tabs">
+    <a href="{{ url_for('votes.index') }}" class="tab {% if not request.args.get('status') %}active{% endif %}">All</a>
+    <a href="{{ url_for('votes.index', status='active') }}" class="tab {% if request.args.get('status') == 'active' %}active{% endif %}">Active</a>
+    <a href="{{ url_for('votes.index', status='closed') }}" class="tab {% if request.args.get('status') == 'closed' %}active{% endif %}">Closed</a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+{% if votes %}
+{% for vote in votes %}
+<div class="card">
+    <div class="card-header">
+        <div>
+            <h3 class="card-title">{{ vote.title }}</h3>
+            <div class="card-meta">
+                {% if vote.deadline %}
+                Deadline: {{ vote.deadline.strftime('%B %d, %Y') }}
+                {% else %}
+                No deadline
+                {% endif %}
+            </div>
+        </div>
+        <span class="badge badge-{% if vote.is_active %}success{% else %}danger{% endif %}">
+            {% if vote.is_active %}Active{% else %}Closed{% endif %}
+        </span>
+    </div>
+    
+    <div class="d-flex gap-2 mt-3">
+        <a href="{{ url_for('votes.view', vote_id=vote.id) }}" class="btn btn-sm btn-outline">View</a>
+        {% if current_user.is_admin and vote.is_active %}
+        <a href="{{ url_for('votes.close_vote', vote_id=vote.id) }}" class="btn btn-sm btn-warning">Close Vote</a>
+        {% endif %}
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('votes.delete', vote_id=vote.id) }}" class="btn btn-sm btn-danger delete-btn">Delete</a>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state">
+    <i class="fas fa-vote-yea"></i>
+    <h3>No votes yet</h3>
+    <p>Create your first family vote.</p>
+    <a href="{{ url_for('votes.create') }}" class="btn btn-primary mt-3">Create Vote</a>
+</div>
+{% endif %}
+{% endblock %}

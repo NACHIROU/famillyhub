@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Search - FamilyHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Search</h1>
+</div>
+
+<div class="search-box">
+    <form method="GET" action="{{ url_for('main.search') }}">
+        <i class="fas fa-search"></i>
+        <input type="text" name="q" value="{{ query }}" placeholder="Search meetings, decisions, votes, contributions..." class="form-control">
+    </form>
+</div>
+
+{% if query %}
+<div class="grid-2 mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Meetings ({{ results.meetings|length }})</h3>
+        </div>
+        {% if results.meetings %}
+        <ul class="list-group">
+            {% for meeting in results.meetings %}
+            <li class="list-group-item">
+                <a href="{{ url_for('meetings.view', meeting_id=meeting.id) }}">
+                    <strong>{{ meeting.title }}</strong>
+                    <div class="card-meta">{{ meeting.date_time.strftime('%B %d, %Y') }}</div>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-center" style="color: var(--text-secondary);">No meetings found</p>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Decisions ({{ results.decisions|length }})</h3>
+        </div>
+        {% if results.decisions %}
+        <ul class="list-group">
+            {% for decision in results.decisions %}
+            <li class="list-group-item">
+                <a href="{{ url_for('decisions.view', decision_id=decision.id) }}">
+                    <strong>{{ decision.title }}</strong>
+                    <span class="badge badge-{% if decision.status == 'approved' %}success{% elif decision.status == 'rejected' %}danger{% else %}warning{% endif %}">
+                        {{ decision.status }}
+                    </span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-center" style="color: var(--text-secondary);">No decisions found</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid-2 mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Votes ({{ results.votes|length }})</h3>
+        </div>
+        {% if results.votes %}
+        <ul class="list-group">
+            {% for vote in results.votes %}
+            <li class="list-group-item">
+                <a href="{{ url_for('votes.view', vote_id=vote.id) }}">
+                    <strong>{{ vote.title }}</strong>
+                    <span class="badge badge-{% if vote.is_active %}success{% else %}danger{% endif %}">
+                        {% if vote.is_active %}Active{% else %}Closed{% endif %}
+                    </span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-center" style="color: var(--text-secondary);">No votes found</p>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Contributions ({{ results.contributions|length }})</h3>
+        </div>
+        {% if results.contributions %}
+        <ul class="list-group">
+            {% for contrib in results.contributions %}
+            <li class="list-group-item">
+                <a href="{{ url_for('contributions.view', contribution_id=contrib.id) }}">
+                    <strong>{{ contrib.title }}</strong>
+                    <div class="card-meta">{{ "%.0f"|format(contrib.amount) }} CFA</div>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-center" style="color: var(--text-secondary);">No contributions found</p>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="fas fa-search"></i>
+    <h3>Search FamilyHub</h3>
+    <p>Enter a search term to find meetings, decisions, votes, and contributions.</p>
+</div>
+{% endif %}
+{% endblock %}

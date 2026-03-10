@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}{{ vote.title }} - FamilyHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ vote.title }}</h1>
+    <div class="d-flex gap-2">
+        {% if current_user.is_admin and vote.is_active %}
+        <a href="{{ url_for('votes.close_vote', vote_id=vote.id) }}" class="btn btn-warning">Close Vote</a>
+        {% endif %}
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('votes.delete', vote_id=vote.id) }}" class="btn btn-danger delete-btn">Delete</a>
+        {% endif %}
+        <a href="{{ url_for('votes.index') }}" class="btn btn-outline">Back</a>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endfor %}
+{% endwith %}
+
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Vote Details</h3>
+            <span class="badge badge-{% if vote.is_active %}success{% else %}danger{% endif %}">
+                {% if vote.is_active %}Active{% else %}Closed{% endif %}
+            </span>
+        </div>
+        
+        <div class="mb-3">
+            <div class="card-meta">Vote Type</div>
+            <strong>{{ vote.vote_type|replace('_', ' ')|capitalize }}</strong>
+        </div>
+        
+        {% if vote.deadline %}
+        <div class="mb-3">
+            <div class="card-meta">Deadline</div>
+            <strong>{{ vote.deadline.strftime('%B %d, %Y at %I:%M %p') }}</strong>
+        </div>
+        {% endif %}
+        
+        {% if decision %}
+        <div class="mb-3">
+            <div class="card-meta">Related Decision</div>
+            <a href="{{ url_for('decisions.view', decision_id=decision.id) }}">{{ decision.title }}</a>
+        </div>
+        {% endif %}
+        
+        {% if not user_vote and vote.is_active %}
+        <div class="mt-4">
+            <h4>Cast Your Vote</h4>
+            <form method="POST" action="{{ url_for('votes.cast_vote', vote_id=vote.id) }}">
+                <div class="vote-options mt-3">
+                    {% for option in vote.get_options() %}
+                    <label class="vote-option">
+                        <input type="radio" name="response" value="{{ option }}" required>
+                        <span class="ml-2">{{ option }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Submit Vote</button>
+            </form>
+        </div>
+        {% elif user_vote %}
+        <div class="alert alert-success mt-3">
+            You have voted: <strong>{{ user_vote.response }}</strong>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Results</h3>
+        </div>
+        
+        {% if show_results %}
+            {% if results %}
+            <div class="vote-results">
+                {% for option in vote.get_options() %}
+                <div class="vote-result-item">
+                    <div class="vote-result-label">
+                        <span>{{ option }}</span>
+                        <span class="vote-percentage">
+                            {% if total_votes > 0 %}
+                            {{ "%.1f"|format((results.get(option, 0) / total_votes) * 100) }}%
+                            {% else %}
+                            0%
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {% if total_votes > 0 %}{{ (results.get(option, 0) / total_votes) * 100 }}{% else %}0{% endif %}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="text-center mt-3">Total votes: {{ total_votes }}</p>
+            {% else %}
+            <p class="text-center">No votes cast yet</p>
+            {% endif %}
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-lock"></i>
+            <p>Results will be visible after the voting period ends</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

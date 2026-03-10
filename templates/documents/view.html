@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}{{ document.title }} - FamilyHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ document.title }}</h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('documents.download', document_id=document.id) }}" class="btn btn-primary">
+            <i class="fas fa-download"></i> Download
+        </a>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('documents.delete', document_id=document.id) }}" class="btn btn-danger delete-btn">Delete</a>
+        {% endif %}
+        <a href="{{ url_for('documents.index') }}" class="btn btn-outline">Back</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="mb-3">
+        <div class="card-meta">File Type</div>
+        <strong>{{ document.file_type|upper }}</strong>
+    </div>
+    
+    <div class="mb-3">
+        <div class="card-meta">Uploaded</div>
+        <strong>{{ document.created_at.strftime('%B %d, %Y at %I:%M %p') }}</strong>
+    </div>
+    
+    <div class="mb-3">
+        <div class="card-meta">Original Filename</div>
+        <strong>{{ document.filename }}</strong>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Decisions - FamilyHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Decisions</h1>
+    <a href="{{ url_for('decisions.create') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> New Decision
+    </a>
+</div>
+
+<div class="tabs">
+    <a href="{{ url_for('decisions.index') }}" class="tab {% if not request.args.get('status') %}active{% endif %}">All</a>
+    <a href="{{ url_for('decisions.index', status='pending') }}" class="tab {% if request.args.get('status') == 'pending' %}active{% endif %}">Pending</a>
+    <a href="{{ url_for('decisions.index', status='approved') }}" class="tab {% if request.args.get('status') == 'approved' %}active{% endif %}">Approved</a>
+    <a href="{{ url_for('decisions.index', status='rejected') }}" class="tab {% if request.args.get('status') == 'rejected' %}active{% endif %}">Rejected</a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+{% if decisions %}
+{% for decision in decisions %}
+<div class="card">
+    <div class="card-header">
+        <div>
+            <h3 class="card-title">{{ decision.title }}</h3>
+            <div class="card-meta">{{ decision.created_at.strftime('%B %d, %Y') }}</div>
+        </div>
+        <span class="badge badge-{% if decision.status == 'approved' %}success{% elif decision.status == 'rejected' %}danger{% else %}warning{% endif %}">
+            {{ decision.status|capitalize }}
+        </span>
+    </div>
+    
+    {% if decision.description %}
+    <p>{{ decision.description }}</p>
+    {% endif %}
+    
+    <div class="d-flex gap-2 mt-3">
+        <a href="{{ url_for('decisions.view', decision_id=decision.id) }}" class="btn btn-sm btn-outline">View</a>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('decisions.edit', decision_id=decision.id) }}" class="btn btn-sm btn-outline">Edit</a>
+        <a href="{{ url_for('decisions.delete', decision_id=decision.id) }}" class="btn btn-sm btn-danger delete-btn">Delete</a>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state">
+    <i class="fas fa-gavel"></i>
+    <h3>No decisions yet</h3>
+    <p>Record your first family decision.</p>
+    <a href="{{ url_for('decisions.create') }}" class="btn btn-primary mt-3">Create Decision</a>
+</div>
+{% endif %}
+{% endblock %}

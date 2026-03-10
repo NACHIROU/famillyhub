@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Create Vote - FamilyHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Create Vote</h1>
+</div>
+
+<div class="card">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endfor %}
+    {% endwith %}
+    
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        
+        <div class="form-group">
+            <label for="title">Vote Title</label>
+            {{ form.title(class="form-control") }}
+        </div>
+        
+        <div class="form-group">
+            <label for="decision_id">Related Decision</label>
+            {{ form.decision_id(class="form-control") }}
+        </div>
+        
+        <div class="form-group">
+            <label for="vote_type">Vote Type</label>
+            {{ form.vote_type(class="form-control") }}
+        </div>
+        
+        <div class="form-group" id="options-field" style="display: none;">
+            <label for="options">Options (comma separated)</label>
+            {{ form.options(class="form-control", placeholder="Option 1, Option 2, Option 3") }}
+        </div>
+        
+        <div class="form-group">
+            <label for="deadline">Deadline (Optional)</label>
+            {{ form.deadline(class="form-control", type="datetime-local") }}
+        </div>
+        
+        <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('votes.index') }}" class="btn btn-outline">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    const voteTypeSelect = document.querySelector('select[name="vote_type"]');
+    const optionsField = document.getElementById('options-field');
+    
+    voteTypeSelect.addEventListener('change', function() {
+        if (this.value === 'multiple_choice') {
+            optionsField.style.display = 'block';
+        } else {
+            optionsField.style.display = 'none';
+        }
+    });
+</script>
+{% endblock %}

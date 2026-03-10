@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Family Members - FamilyHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Family Members</h1>
+    {% if current_user.is_admin %}
+    <a href="{{ url_for('auth.add_member') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Add Member
+    </a>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">{{ family.name }}</h3>
+    </div>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    {% if members %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Member</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in members %}
+            <tr>
+                <td>
+                    <div class="user-info">
+                        <div class="avatar">{{ member.name[0].upper() }}</div>
+                        <span>{{ member.name }}</span>
+                    </div>
+                </td>
+                <td>{{ member.email }}</td>
+                <td>{{ member.phone or '-' }}</td>
+                <td>
+                    {% if member.is_admin %}
+                    <span class="badge badge-primary">Admin</span>
+                    {% else %}
+                    <span class="badge badge-info">{{ member.family_role or 'Member' }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if current_user.is_admin and not member.is_admin and member.id != current_user.id %}
+                    <a href="{{ url_for('auth.remove_member', user_id=member.id) }}" 
+                       class="btn btn-sm btn-danger"
+                       onclick="return confirm('Are you sure you want to remove this member?')">
+                        Remove
+                    </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-users"></i>
+        <h3>No members yet</h3>
+        <p>Add members to your family to get started.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

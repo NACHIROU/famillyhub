@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications - FamilyHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Notifications</h1>
+    {% if notifications %}
+    <a href="{{ url_for('main.mark_all_notifications_read') }}" class="btn btn-outline">
+        Mark All as Read
+    </a>
+    {% endif %}
+</div>
+
+<div class="card">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    {% if notifications %}
+    <ul class="list-group">
+        {% for notification in notifications %}
+        <li class="list-group-item" style="background: {% if not notification.is_read %}var(--background){% else %}white{% endif %};">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>
+                        {% if not notification.is_read %}
+                        <span class="status-dot active"></span>
+                        {% endif %}
+                        {{ notification.title }}
+                    </strong>
+                    <p class="mb-1">{{ notification.message }}</p>
+                    <div class="card-meta timestamp">{{ notification.created_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
+                </div>
+                {% if not notification.is_read %}
+                <a href="{{ url_for('main.mark_notification_read', notification_id=notification.id) }}" class="btn btn-sm btn-outline">
+                    Mark Read
+                </a>
+                {% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-bell"></i>
+        <h3>No notifications</h3>
+        <p>You're all caught up!</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
