@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
-from models import db, User, Family, Notification
+from models import User, Family, Notification
 from forms import LoginForm, RegisterForm, CreateFamilyForm, AddMemberForm
 from datetime import datetime
 
@@ -20,7 +20,7 @@ def login():
         return redirect(url_for('main.dashboard'))
     form = LoginForm()
     if form.validate_on_submit():
-        user = User.query.filter_by(email=form.email.data).first()
+        user = User.objects(email=form.email.data).first()
         if user and user.check_password(form.password.data):
             login_user(user)
             return redirect(url_for('main.dashboard'))
@@ -34,7 +34,7 @@ def register():
         return redirect(url_for('main.dashboard'))
     form = RegisterForm()
     if form.validate_on_submit():
-        existing_user = User.query.filter_by(email=form.email.data).first()
+        existing_user = User.objects(email=form.email.data).first()
         if existing_user:
             flash('Email already registered', 'danger')
             return redirect(url_for('auth.register'))
@@ -45,8 +45,7 @@ def register():
             phone=form.phone.data
         )
         user.set_password(form.password.data)
-        db.session.add(user)
-        db.session.commit()
+        user.save()
         flash('Account created! Please log in.', 'success')
         return redirect(url_for('auth.login'))
     return render_template('auth/register.html', form=form)
@@ -72,13 +71,12 @@ def create_family():
             name=form.family_name.data,
             admin_id=current_user.id
         )
-        db.session.add(family)
-        db.session.commit()
+        family.save()
         
         current_user.family_id = family.id
         current_user.is_admin = True
         current_user.family_role = 'admin'
-        db.session.commit()
+        current_user.save()
         
         flash('Family created successfully!', 'success')
         return redirect(url_for('main.dashboard'))
@@ -103,12 +101,12 @@ def add_member():
     
     form = AddMemberForm()
     if form.validate_on_submit():
-        existing_user = User.query.filter_by(email=form.email.data).first()
+        existing_user = User.objects(email=form.email.data).first()
         
         if existing_user:
             existing_user.family_id = current_user.family_id
             existing_user.family_role = form.family_role.data or 'member'
-            db.session.commit()
+            existing_user.save()
             flash(f'{existing_user.name} has been added to the family!', 'success')
         else:
             user = User(
@@ -120,8 +118,7 @@ def add_member():
                 is_admin=False
             )
             user.set_password(form.password.data)
-            db.session.add(user)
-            db.session.commit()
+            user.save()
             flash(f'{user.name} has been invited to the family!', 'success')
         
         return redirect(url_for('main.members'))
@@ -136,25 +133,26 @@ def members():
         flash('You need to create or join a family first', 'warning')
         return redirect(url_for('auth.create_family'))
     
-    family = Family.query.get(current_user.family_id)
-    all_users = User.query.filter_by(family_id=current_user.family_id).all()
+    family = Family.objects.get(id=current_user.family_id)
+    all_users = User.objects(family_id=current_user.family_id)
     return render_template('auth/members.html', members=all_users, family=family)
 
 
-@auth.route('/remove-member/<int:user_id>')
+@auth.route('/remove-member/<user_id>')
 @login_required
 def remove_member(user_id):
     if not current_user.is_admin:
         flash('Only family admins can remove members', 'danger')
         return redirect(url_for('main.dashboard'))
     
-    user = User.query.get(user_id)
+    from bson import ObjectId
+    user = User.objects(id=ObjectId(user_id)).first()
     if user and user.family_id == current_user.family_id:
         if user.id == current_user.id:
             flash('You cannot remove yourself', 'danger')
         else:
             user.family_id = None
             user.family_role = None
-            db.session.commit()
+            user.save()
             flash(f'{user.name} has been removed from the family', 'success')
     return redirect(url_for('auth.members'))

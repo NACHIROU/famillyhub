@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory
 from flask_login import login_required, current_user
-from models import db, Document
+from models import Document
 from werkzeug.utils import secure_filename
 from config import Config
 import os
@@ -23,17 +23,15 @@ def index():
         return redirect(url_for('auth.create_family'))
     
     category = request.args.get('category')
-    query = Document.query.filter_by(family_id=current_user.family_id)
+    query = Document.objects(family_id=current_user.family_id)
     
     if category:
-        query = query.filter_by(file_type=category)
+        query = query.filter(file_type=category)
     
-    all_documents = query.order_by(Document.created_at.desc()).all()
+    all_documents = query.order_by('-created_at')
     
-    categories = db.session.query(Document.file_type).filter_by(
-        family_id=current_user.family_id
-    ).distinct().all()
-    categories = [c[0] for c in categories if c[0]]
+    all_docs = Document.objects(family_id=current_user.family_id)
+    categories = list(set(d.file_type for d in all_docs if d.file_type))
     
     return render_template('documents/index.html', documents=all_documents, categories=categories)
 
@@ -76,8 +74,7 @@ def upload():
                 file_type=file_type,
                 uploaded_by=current_user.id
             )
-            db.session.add(document)
-            db.session.commit()
+            document.save()
             
             flash('Document uploaded successfully!', 'success')
             return redirect(url_for('documents.index'))
@@ -88,37 +85,40 @@ def upload():
     return render_template('documents/upload.html')
 
 
-@documents.route('/documents/<int:document_id>')
+@documents.route('/documents/<document_id>')
 @login_required
 def view(document_id):
-    document = Document.query.get_or_404(document_id)
-    if document.family_id != current_user.family_id:
+    from bson import ObjectId
+    document = Document.objects(id=ObjectId(document_id)).first()
+    if not document or document.family_id != current_user.family_id:
         flash('Access denied', 'danger')
         return redirect(url_for('documents.index'))
     
     return render_template('documents/view.html', document=document)
 
 
-@documents.route('/documents/<int:document_id>/download')
+@documents.route('/documents/<document_id>/download')
 @login_required
 def download(document_id):
-    document = Document.query.get_or_404(document_id)
-    if document.family_id != current_user.family_id:
+    from bson import ObjectId
+    document = Document.objects(id=ObjectId(document_id)).first()
+    if not document or document.family_id != current_user.family_id:
         flash('Access denied', 'danger')
         return redirect(url_for('documents.index'))
     
     return redirect(document.file_path)
 
 
-@documents.route('/documents/<int:document_id>/delete')
+@documents.route('/documents/<document_id>/delete')
 @login_required
 def delete(document_id):
+    from bson import ObjectId
     if not current_user.is_admin:
         flash('Only family admins can delete documents', 'danger')
         return redirect(url_for('documents.index'))
     
-    document = Document.query.get_or_404(document_id)
-    if document.family_id != current_user.family_id:
+    document = Document.objects(id=ObjectId(document_id)).first()
+    if not document or document.family_id != current_user.family_id:
         flash('Access denied', 'danger')
         return redirect(url_for('documents.index'))
     
@@ -126,8 +126,7 @@ def delete(document_id):
     if os.path.exists(filepath):
         os.remove(filepath)
     
-    db.session.delete(document)
-    db.session.commit()
+    document.delete()
     
     flash('Document deleted successfully!', 'success')
     return redirect(url_for('documents.index'))

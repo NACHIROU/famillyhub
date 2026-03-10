@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
-from models import db, Vote, VoteResponse, Decision, User
+from models import Vote, VoteResponse, Decision, User
 from forms import VoteForm
 from datetime import datetime
 from routes.main import notify_family
@@ -17,19 +17,19 @@ def index():
         return redirect(url_for('auth.create_family'))
     
     status_filter = request.args.get('status')
-    query = Vote.query.filter_by(family_id=current_user.family_id)
+    query = Vote.objects(family_id=current_user.family_id)
     
     if status_filter == 'active':
-        query = query.filter_by(is_active=True)
+        query = query.filter(is_active=True)
     elif status_filter == 'closed':
-        query = query.filter_by(is_active=False)
+        query = query.filter(is_active=False)
     
-    all_votes = query.order_by(Vote.created_at.desc()).all()
+    all_votes = query.order_by('-created_at')
     
     for vote in all_votes:
         if vote.deadline and vote.deadline < datetime.now() and vote.is_active:
             vote.is_active = False
-            db.session.commit()
+            vote.save()
     
     return render_template('votes/index.html', votes=all_votes)
 
@@ -42,8 +42,8 @@ def create():
         return redirect(url_for('main.dashboard'))
     
     form = VoteForm()
-    decisions = Decision.query.filter_by(family_id=current_user.family_id).all()
-    form.decision_id.choices = [(0, 'No Decision')] + [(d.id, d.title) for d in decisions]
+    decisions = Decision.objects(family_id=current_user.family_id)
+    form.decision_id.choices = [(0, 'No Decision')] + [(str(d.id), d.title) for d in decisions]
     
     if form.validate_on_submit():
         options_list = []
@@ -62,8 +62,7 @@ def create():
             is_active=True,
             created_by=current_user.id
         )
-        db.session.add(vote)
-        db.session.commit()
+        vote.save()
         
         notify_family(
             current_user.family_id,
@@ -78,17 +77,18 @@ def create():
     return render_template('votes/create.html', form=form)
 
 
-@votes.route('/votes/<int:vote_id>')
+@votes.route('/votes/<vote_id>')
 @login_required
 def view(vote_id):
-    vote = Vote.query.get_or_404(vote_id)
-    if vote.family_id != current_user.family_id:
+    from bson import ObjectId
+    vote = Vote.objects(id=ObjectId(vote_id)).first()
+    if not vote or vote.family_id != current_user.family_id:
         flash('Access denied', 'danger')
         return redirect(url_for('votes.index'))
     
-    decision = Decision.query.get(vote.decision_id) if vote.decision_id else None
+    decision = Decision.objects.get(id=vote.decision_id) if vote.decision_id else None
     
-    user_vote = VoteResponse.query.filter_by(vote_id=vote_id, user_id=current_user.id).first()
+    user_vote = VoteResponse.objects(vote_id=vote.id, user_id=current_user.id).first()
     
     show_results = True
     if vote.vote_type == 'secret' and vote.is_active:
@@ -97,7 +97,7 @@ def view(vote_id):
     results = vote.get_results() if show_results else None
     total_votes = sum(results.values()) if results else 0
     
-    responses = VoteResponse.query.filter_by(vote_id=vote_id).all() if show_results else []
+    responses = VoteResponse.objects(vote_id=vote.id).all() if show_results else []
     
     return render_template('votes/view.html', 
                          vote=vote, 
@@ -109,11 +109,12 @@ def view(vote_id):
                          responses=responses)
 
 
-@votes.route('/votes/<int:vote_id>/vote', methods=['POST'])
+@votes.route('/votes/<vote_id>/vote', methods=['POST'])
 @login_required
 def cast_vote(vote_id):
-    vote = Vote.query.get_or_404(vote_id)
-    if vote.family_id != current_user.family_id:
+    from bson import ObjectId
+    vote = Vote.objects(id=ObjectId(vote_id)).first()
+    if not vote or vote.family_id != current_user.family_id:
         flash('Access denied', 'danger')
         return redirect(url_for('votes.index'))
     
@@ -125,7 +126,7 @@ def cast_vote(vote_id):
         flash('Voting deadline has passed', 'danger')
         return redirect(url_for('votes.view', vote_id=vote_id))
     
-    existing_vote = VoteResponse.query.filter_by(vote_id=vote_id, user_id=current_user.id).first()
+    existing_vote = VoteResponse.objects(vote_id=vote.id, user_id=current_user.id).first()
     if existing_vote:
         flash('You have already voted', 'warning')
         return redirect(url_for('votes.view', vote_id=vote_id))
@@ -136,49 +137,49 @@ def cast_vote(vote_id):
         return redirect(url_for('votes.view', vote_id=vote_id))
     
     vote_response = VoteResponse(
-        vote_id=vote_id,
+        vote_id=vote.id,
         user_id=current_user.id,
         response=response
     )
-    db.session.add(vote_response)
-    db.session.commit()
+    vote_response.save()
     
     flash('Vote cast successfully!', 'success')
     return redirect(url_for('votes.view', vote_id=vote_id))
 
 
-@votes.route('/votes/<int:vote_id>/close')
+@votes.route('/votes/<vote_id>/close')
 @login_required
 def close_vote(vote_id):
+    from bson import ObjectId
     if not current_user.is_admin:
         flash('Only family admins can close votes', 'danger')
         return redirect(url_for('votes.index'))
     
-    vote = Vote.query.get_or_404(vote_id)
-    if vote.family_id != current_user.family_id:
+    vote = Vote.objects(id=ObjectId(vote_id)).first()
+    if not vote or vote.family_id != current_user.family_id:
         flash('Access denied', 'danger')
         return redirect(url_for('votes.index'))
     
     vote.is_active = False
-    db.session.commit()
+    vote.save()
     
     flash('Vote closed successfully!', 'success')
     return redirect(url_for('votes.view', vote_id=vote_id))
 
 
-@votes.route('/votes/<int:vote_id>/delete')
+@votes.route('/votes/<vote_id>/delete')
 @login_required
 def delete(vote_id):
+    from bson import ObjectId
     if not current_user.is_admin:
         flash('Only family admins can delete votes', 'danger')
         return redirect(url_for('votes.index'))
     
-    vote = Vote.query.get_or_404(vote_id)
-    if vote.family_id != current_user.family_id:
+    vote = Vote.objects(id=ObjectId(vote_id)).first()
+    if not vote or vote.family_id != current_user.family_id:
         flash('Access denied', 'danger')
         return redirect(url_for('votes.index'))
     
-    db.session.delete(vote)
-    db.session.commit()
+    vote.delete()
     flash('Vote deleted successfully!', 'success')
     return redirect(url_for('votes.index'))

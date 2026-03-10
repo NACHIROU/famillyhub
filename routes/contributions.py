@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
-from models import db, Contribution, Payment, User
+from models import Contribution, Payment, User
 from forms import ContributionForm, PaymentForm
 from datetime import date, datetime, timedelta
 from routes.main import notify_family
@@ -15,15 +15,13 @@ def index():
         flash('You need to create or join a family first', 'warning')
         return redirect(url_for('auth.create_family'))
     
-    all_contributions = Contribution.query.filter_by(
+    all_contributions = Contribution.objects(
         family_id=current_user.family_id
-    ).order_by(Contribution.due_date.desc()).all()
+    ).order_by('-due_date')
     
-    payments = Payment.query.join(Contribution).filter(
-        Contribution.family_id == current_user.family_id
-    ).all()
+    payments = Payment.objects()
     
-    members = User.query.filter_by(family_id=current_user.family_id).all()
+    members = User.objects(family_id=current_user.family_id)
     
     contribution_status = []
     for contrib in all_contributions:
@@ -73,8 +71,7 @@ def create():
             due_date=form.due_date.data,
             created_by=current_user.id
         )
-        db.session.add(contribution)
-        db.session.commit()
+        contribution.save()
         
         notify_family(
             current_user.family_id,
@@ -89,16 +86,17 @@ def create():
     return render_template('contributions/create.html', form=form)
 
 
-@contributions.route('/contributions/<int:contribution_id>')
+@contributions.route('/contributions/<contribution_id>')
 @login_required
 def view(contribution_id):
-    contribution = Contribution.query.get_or_404(contribution_id)
-    if contribution.family_id != current_user.family_id:
+    from bson import ObjectId
+    contribution = Contribution.objects(id=ObjectId(contribution_id)).first()
+    if not contribution or contribution.family_id != current_user.family_id:
         flash('Access denied', 'danger')
         return redirect(url_for('contributions.index'))
     
-    payments = Payment.query.filter_by(contribution_id=contribution_id).all()
-    members = User.query.filter_by(family_id=current_user.family_id).all()
+    payments = Payment.objects(contribution_id=contribution.id)
+    members = User.objects(family_id=current_user.family_id)
     
     return render_template('contributions/view.html', 
                          contribution=contribution, 
@@ -106,11 +104,12 @@ def view(contribution_id):
                          members=members)
 
 
-@contributions.route('/contributions/<int:contribution_id>/payment', methods=['POST'])
+@contributions.route('/contributions/<contribution_id>/payment', methods=['POST'])
 @login_required
 def add_payment(contribution_id):
-    contribution = Contribution.query.get_or_404(contribution_id)
-    if contribution.family_id != current_user.family_id:
+    from bson import ObjectId
+    contribution = Contribution.objects(id=ObjectId(contribution_id)).first()
+    if not contribution or contribution.family_id != current_user.family_id:
         flash('Access denied', 'danger')
         return redirect(url_for('contributions.index'))
     
@@ -120,28 +119,28 @@ def add_payment(contribution_id):
     status = request.form.get('status')
     
     payment = Payment(
-        contribution_id=contribution_id,
+        contribution_id=contribution.id,
         user_id=user_id,
         amount=amount,
         payment_date=datetime.strptime(payment_date, '%Y-%m-%d').date(),
         status=status
     )
-    db.session.add(payment)
-    db.session.commit()
+    payment.save()
     
     flash('Payment recorded successfully!', 'success')
     return redirect(url_for('contributions.view', contribution_id=contribution_id))
 
 
-@contributions.route('/contributions/<int:contribution_id>/edit', methods=['GET', 'POST'])
+@contributions.route('/contributions/<contribution_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit(contribution_id):
+    from bson import ObjectId
     if not current_user.is_admin:
         flash('Only family admins can edit contributions', 'danger')
         return redirect(url_for('contributions.index'))
     
-    contribution = Contribution.query.get_or_404(contribution_id)
-    if contribution.family_id != current_user.family_id:
+    contribution = Contribution.objects(id=ObjectId(contribution_id)).first()
+    if not contribution or contribution.family_id != current_user.family_id:
         flash('Access denied', 'danger')
         return redirect(url_for('contributions.index'))
     
@@ -152,7 +151,7 @@ def edit(contribution_id):
         contribution.amount = form.amount.data
         contribution.frequency = form.frequency.data
         contribution.due_date = form.due_date.data
-        db.session.commit()
+        contribution.save()
         
         flash('Contribution updated successfully!', 'success')
         return redirect(url_for('contributions.view', contribution_id=contribution_id))
@@ -165,20 +164,20 @@ def edit(contribution_id):
     return render_template('contributions/edit.html', form=form, contribution=contribution)
 
 
-@contributions.route('/contributions/<int:contribution_id>/delete')
+@contributions.route('/contributions/<contribution_id>/delete')
 @login_required
 def delete(contribution_id):
+    from bson import ObjectId
     if not current_user.is_admin:
         flash('Only family admins can delete contributions', 'danger')
         return redirect(url_for('contributions.index'))
     
-    contribution = Contribution.query.get_or_404(contribution_id)
-    if contribution.family_id != current_user.family_id:
+    contribution = Contribution.objects(id=ObjectId(contribution_id)).first()
+    if not contribution or contribution.family_id != current_user.family_id:
         flash('Access denied', 'danger')
         return redirect(url_for('contributions.index'))
     
-    db.session.delete(contribution)
-    db.session.commit()
+    contribution.delete()
     flash('Contribution deleted successfully!', 'success')
     return redirect(url_for('contributions.index'))
 
@@ -186,11 +185,11 @@ def delete(contribution_id):
 @contributions.route('/my-contributions')
 @login_required
 def my_contributions():
-    contributions = Contribution.query.filter_by(family_id=current_user.family_id).all()
+    contributions = Contribution.objects(family_id=current_user.family_id)
     
     my_status = []
     for contrib in contributions:
-        payment = Payment.query.filter_by(
+        payment = Payment.objects(
             contribution_id=contrib.id,
             user_id=current_user.id
         ).first()
@@ -214,15 +213,13 @@ def check_contribution_reminders():
     today = date.today()
     reminder_date = today + timedelta(days=3)
     
-    contributions = Contribution.query.filter(
-        Contribution.due_date == reminder_date
-    ).all()
+    contributions = Contribution.objects(due_date=reminder_date)
     
     for contrib in contributions:
         if contrib.frequency != 'one_time':
             continue
         
-        already_paid = Payment.query.filter_by(
+        already_paid = Payment.objects(
             contribution_id=contrib.id,
             status='paid'
         ).first()

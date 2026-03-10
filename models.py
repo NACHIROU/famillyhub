@@ -1,38 +1,24 @@
-from flask_sqlalchemy import SQLAlchemy
+import mongoengine as me
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date
 
-db = SQLAlchemy()
+
+class Family(me.Document):
+    name = me.StringField(required=True, max_length=200)
+    admin_id = me.ObjectIdField(required=True)
+    created_at = me.DateTimeField(default=datetime.utcnow)
 
 
-class Family(db.Model):
-    __tablename__ = 'families'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
-    admin_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    admin = db.relationship('User', backref='administered_family', foreign_keys=[admin_id])
-    members = db.relationship('User', backref='family', foreign_keys='User.family_id')
-    meetings = db.relationship('Meeting', backref='family', cascade='all, delete-orphan')
-    decisions = db.relationship('Decision', backref='family', cascade='all, delete-orphan')
-    votes = db.relationship('Vote', backref='family', cascade='all, delete-orphan')
-    contributions = db.relationship('Contribution', backref='family', cascade='all, delete-orphan')
-    documents = db.relationship('Document', backref='family', cascade='all, delete-orphan')
-
-
-class User(UserMixin, db.Model):
-    __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)
-    name = db.Column(db.String(100), nullable=False)
-    phone = db.Column(db.String(20))
-    family_role = db.Column(db.String(50), default='member')
-    family_id = db.Column(db.Integer, db.ForeignKey('families.id'))
-    is_admin = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    family_admin = db.relationship('Family', backref='admin_user', foreign_keys=[Family.admin_id])
+class User(UserMixin, me.Document):
+    email = me.EmailField(required=True, unique=True, max_length=120)
+    password_hash = me.StringField(required=True, max_length=256)
+    name = me.StringField(required=True, max_length=100)
+    phone = me.StringField(max_length=20)
+    family_role = me.StringField(default='member', max_length=50)
+    family_id = me.ObjectIdField()
+    is_admin = me.BooleanField(default=False)
+    created_at = me.DateTimeField(default=datetime.utcnow)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -40,61 +26,53 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    @staticmethod
+    def get_by_email(email):
+        return User.objects(email=email).first()
 
-class Meeting(db.Model):
-    __tablename__ = 'meetings'
-    id = db.Column(db.Integer, primary_key=True)
-    family_id = db.Column(db.Integer, db.ForeignKey('families.id'), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    date_time = db.Column(db.DateTime, nullable=False)
-    location = db.Column(db.String(200))
-    agenda = db.Column(db.Text)
-    themes_discussed = db.Column(db.Text)
-    minutes = db.Column(db.Text)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    creator = db.relationship('User', backref='created_meetings')
-    attendance = db.relationship('MeetingAttendance', backref='meeting', cascade='all, delete-orphan')
-    decisions = db.relationship('Decision', backref='meeting')
+    @staticmethod
+    def get_by_id(user_id):
+        return User.objects(id=user_id).first()
 
 
-class MeetingAttendance(db.Model):
-    __tablename__ = 'meeting_attendance'
-    id = db.Column(db.Integer, primary_key=True)
-    meeting_id = db.Column(db.Integer, db.ForeignKey('meetings.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    present = db.Column(db.Boolean, default=False)
-    user = db.relationship('User', backref='meeting_attendance')
+class Meeting(me.Document):
+    family_id = me.ObjectIdField(required=True)
+    title = me.StringField(required=True, max_length=200)
+    date_time = me.DateTimeField(required=True)
+    location = me.StringField(max_length=200)
+    agenda = me.StringField()
+    themes_discussed = me.StringField()
+    minutes = me.StringField()
+    created_by = me.ObjectIdField(required=True)
+    created_at = me.DateTimeField(default=datetime.utcnow)
 
 
-class Decision(db.Model):
-    __tablename__ = 'decisions'
-    id = db.Column(db.Integer, primary_key=True)
-    family_id = db.Column(db.Integer, db.ForeignKey('families.id'), nullable=False)
-    meeting_id = db.Column(db.Integer, db.ForeignKey('meetings.id'))
-    title = db.Column(db.String(200), nullable=False)
-    description = db.Column(db.Text)
-    status = db.Column(db.String(20), default='pending')
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    creator = db.relationship('User', backref='created_decisions')
-    votes = db.relationship('Vote', backref='decision', cascade='all, delete-orphan')
+class MeetingAttendance(me.Document):
+    meeting_id = me.ObjectIdField(required=True)
+    user_id = me.ObjectIdField(required=True)
+    present = me.BooleanField(default=False)
 
 
-class Vote(db.Model):
-    __tablename__ = 'votes'
-    id = db.Column(db.Integer, primary_key=True)
-    family_id = db.Column(db.Integer, db.ForeignKey('families.id'), nullable=False)
-    decision_id = db.Column(db.Integer, db.ForeignKey('decisions.id'))
-    title = db.Column(db.String(200), nullable=False)
-    vote_type = db.Column(db.String(20), nullable=False)
-    options = db.Column(db.Text)
-    deadline = db.Column(db.DateTime)
-    is_active = db.Column(db.Boolean, default=True)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    creator = db.relationship('User', backref='created_votes')
-    responses = db.relationship('VoteResponse', backref='vote', cascade='all, delete-orphan')
+class Decision(me.Document):
+    family_id = me.ObjectIdField(required=True)
+    meeting_id = me.ObjectIdField()
+    title = me.StringField(required=True, max_length=200)
+    description = me.StringField()
+    status = me.StringField(default='pending', max_length=20)
+    created_by = me.ObjectIdField(required=True)
+    created_at = me.DateTimeField(default=datetime.utcnow)
+
+
+class Vote(me.Document):
+    family_id = me.ObjectIdField(required=True)
+    decision_id = me.ObjectIdField()
+    title = me.StringField(required=True, max_length=200)
+    vote_type = me.StringField(required=True, max_length=20)
+    options = me.StringField()
+    deadline = me.DateTimeField()
+    is_active = me.BooleanField(default=True)
+    created_by = me.ObjectIdField(required=True)
+    created_at = me.DateTimeField(default=datetime.utcnow)
 
     def get_options(self):
         import json
@@ -105,69 +83,53 @@ class Vote(db.Model):
         return []
 
     def get_results(self):
-        responses = VoteResponse.query.filter_by(vote_id=self.id).all()
+        responses = VoteResponse.objects(vote_id=self.id)
         results = {}
         for r in responses:
             results[r.response] = results.get(r.response, 0) + 1
         return results
 
 
-class VoteResponse(db.Model):
-    __tablename__ = 'vote_responses'
-    id = db.Column(db.Integer, primary_key=True)
-    vote_id = db.Column(db.Integer, db.ForeignKey('votes.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    response = db.Column(db.String(100), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    user = db.relationship('User', backref='vote_responses')
+class VoteResponse(me.Document):
+    vote_id = me.ObjectIdField(required=True)
+    user_id = me.ObjectIdField(required=True)
+    response = me.StringField(required=True, max_length=100)
+    created_at = me.DateTimeField(default=datetime.utcnow)
 
 
-class Contribution(db.Model):
-    __tablename__ = 'contributions'
-    id = db.Column(db.Integer, primary_key=True)
-    family_id = db.Column(db.Integer, db.ForeignKey('families.id'), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    amount = db.Column(db.Numeric(10, 2), nullable=False)
-    frequency = db.Column(db.String(20), default='one_time')
-    due_date = db.Column(db.Date, nullable=False)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    creator = db.relationship('User', backref='created_contributions')
-    payments = db.relationship('Payment', backref='contribution', cascade='all, delete-orphan')
+class Contribution(me.Document):
+    family_id = me.ObjectIdField(required=True)
+    title = me.StringField(required=True, max_length=200)
+    amount = me.DecimalField(required=True, precision=2)
+    frequency = me.StringField(default='one_time', max_length=20)
+    due_date = me.DateField(required=True)
+    created_by = me.ObjectIdField(required=True)
+    created_at = me.DateTimeField(default=datetime.utcnow)
 
 
-class Payment(db.Model):
-    __tablename__ = 'payments'
-    id = db.Column(db.Integer, primary_key=True)
-    contribution_id = db.Column(db.Integer, db.ForeignKey('contributions.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    amount = db.Column(db.Numeric(10, 2), nullable=False)
-    payment_date = db.Column(db.Date, nullable=False)
-    status = db.Column(db.String(20), default='paid')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    user = db.relationship('User', backref='payments')
+class Payment(me.Document):
+    contribution_id = me.ObjectIdField(required=True)
+    user_id = me.ObjectIdField(required=True)
+    amount = me.DecimalField(required=True, precision=2)
+    payment_date = me.DateField(required=True)
+    status = me.StringField(default='paid', max_length=20)
+    created_at = me.DateTimeField(default=datetime.utcnow)
 
 
-class Document(db.Model):
-    __tablename__ = 'documents'
-    id = db.Column(db.Integer, primary_key=True)
-    family_id = db.Column(db.Integer, db.ForeignKey('families.id'), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    filename = db.Column(db.String(300), nullable=False)
-    file_path = db.Column(db.String(500), nullable=False)
-    file_type = db.Column(db.String(50))
-    uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    uploader = db.relationship('User', backref='uploaded_documents')
+class Document(me.Document):
+    family_id = me.ObjectIdField(required=True)
+    title = me.StringField(required=True, max_length=200)
+    filename = me.StringField(required=True, max_length=300)
+    file_path = me.StringField(required=True, max_length=500)
+    file_type = me.StringField(max_length=50)
+    uploaded_by = me.ObjectIdField(required=True)
+    created_at = me.DateTimeField(default=datetime.utcnow)
 
 
-class Notification(db.Model):
-    __tablename__ = 'notifications'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    message = db.Column(db.Text)
-    type = db.Column(db.String(50))
-    is_read = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    user = db.relationship('User', backref='notifications')
+class Notification(me.Document):
+    user_id = me.ObjectIdField(required=True)
+    title = me.StringField(required=True, max_length=200)
+    message = me.StringField()
+    type = me.StringField(max_length=50)
+    is_read = me.BooleanField(default=False)
+    created_at = me.DateTimeField(default=datetime.utcnow)
