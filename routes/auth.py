@@ -9,14 +9,17 @@ auth = Blueprint('auth', __name__)
 
 @auth.route('/')
 def index():
-    if current_user.is_authenticated:
-        return redirect(url_for('main.dashboard'))
-    return redirect(url_for('auth.login'))
+    return render_template('landing.html')
+
+
+@auth.route('/home')
+def home():
+    return render_template('landing.html')
 
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated:
+    if current_user.is_authenticated and current_user.family_id:
         return redirect(url_for('main.dashboard'))
     form = LoginForm()
     if form.validate_on_submit():
@@ -30,7 +33,7 @@ def login():
 
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
-    if current_user.is_authenticated:
+    if current_user.is_authenticated and current_user.family_id:
         return redirect(url_for('main.dashboard'))
     form = RegisterForm()
     if form.validate_on_submit():

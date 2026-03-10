@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FamilyHub - Connect Your Family</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .landing-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .landing-header {
+            padding: 1.5rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .logo i {
+            color: #ffd700;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            font-size: 1rem;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid white;
+            color: white;
+        }
+        
+        .btn-outline:hover {
+            background: white;
+            color: #667eea;
+        }
+        
+        .btn-primary {
+            background: #ffd700;
+            color: #333;
+        }
+        
+        .btn-primary:hover {
+            background: #ffed4a;
+            transform: translateY(-2px);
+        }
+        
+        .landing-hero {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        
+        .hero-content {
+            text-align: center;
+            max-width: 800px;
+            color: white;
+        }
+        
+        .hero-content h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+        
+        .hero-content h1 span {
+            color: #ffd700;
+        }
+        
+        .hero-content p {
+            font-size: 1.25rem;
+            margin-bottom: 2.5rem;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        
+        .hero-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 4rem;
+        }
+        
+        .feature-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 16px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .feature-card i {
+            font-size: 2.5rem;
+            color: #ffd700;
+            margin-bottom: 1rem;
+        }
+        
+        .feature-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .feature-card p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 0;
+        }
+        
+        .landing-footer {
+            text-align: center;
+            padding: 2rem;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .landing-header {
+                padding: 1rem;
+            }
+            
+            .hero-content h1 {
+                font-size: 2.5rem;
+            }
+            
+            .hero-content p {
+                font-size: 1rem;
+            }
+            
+            .hero-features {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="landing-container">
+        <header class="landing-header">
+            <div class="logo">
+                <i class="fas fa-house-user"></i>
+                FamilyHub
+            </div>
+            <div class="header-actions">
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline">Login</a>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Get Started</a>
+            </div>
+        </header>
+        
+        <section class="landing-hero">
+            <div class="hero-content">
+                <h1>Bring Your <span>Family</span> Together</h1>
+                <p>Organize meetings, make decisions together, manage contributions, and share important documents - all in one secure place.</p>
+                
+                <div class="hero-features">
+                    <div class="feature-card">
+                        <i class="fas fa-calendar-alt"></i>
+                        <h3>Meetings</h3>
+                        <p>Schedule and track family meetings with easy attendance</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-vote-yea"></i>
+                        <h3>Voting</h3>
+                        <p>Make decisions together with polls and voting system</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-hand-holding-usd"></i>
+                        <h3>Contributions</h3>
+                        <p>Track and manage family finances effortlessly</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-folder-open"></i>
+                        <h3>Documents</h3>
+                        <p>Store and share important family documents</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <footer class="landing-footer">
+            <p>Built with love for families everywhere</p>
+        </footer>
+    </div>
+</body>
+</html>
